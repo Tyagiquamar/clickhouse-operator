@@ -390,6 +390,25 @@ func (cluster *Cluster) WalkShards(f func(index int, shard IShard) error) []erro
 	return res
 }
 
+// ShardsMap returns the shards map for efficient lookup by name
+func (cluster *Cluster) ShardsMap() map[string]*ChiShard {
+	if cluster == nil || cluster.Layout == nil {
+		return nil
+	}
+	if cluster.Layout.ShardsMap != nil {
+		return cluster.Layout.ShardsMap
+	}
+	// Build the map from the Shards slice if not already built
+	result := make(map[string]*ChiShard, len(cluster.Layout.Shards))
+	for _, shard := range cluster.Layout.Shards {
+		if shard != nil && shard.GetName() != "" {
+			result[shard.GetName()] = shard
+		}
+	}
+	cluster.Layout.ShardsMap = result
+	return result
+}
+
 // WalkReplicas walks replicas
 func (cluster *Cluster) WalkReplicas(f func(index int, replica *ChiReplica) error) []error {
 	res := make([]error, 0)
@@ -494,7 +513,8 @@ type ChiClusterLayout struct {
 	ShardsCount   int `json:"shardsCount,omitempty"   yaml:"shardsCount,omitempty"`
 	ReplicasCount int `json:"replicasCount,omitempty" yaml:"replicasCount,omitempty"`
 
-	// TODO refactor into map[string]ChiShard
+	// Shards by name, for efficient lookup. Being phased in to replace Shards slice.
+	ShardsMap   map[string]*ChiShard `json:"shardsMap" yaml:"shardsMap" testdiff:"ignore"`
 	Shards   []*ChiShard   `json:"shards,omitempty"   yaml:"shards,omitempty"`
 	Replicas []*ChiReplica `json:"replicas,omitempty" yaml:"replicas,omitempty"`
 
